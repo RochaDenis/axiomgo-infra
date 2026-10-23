@@ -45,6 +45,22 @@ Resources:
                   - athena:GetQueryResults
                   - sqs:ReceiveMessage
                   - kms:Decrypt
+                  - lambda:GetFunction
+                  - dynamodb:PartiQLSelect
+                  - kinesis:Get*
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - logs:StartLiveTail
+                  - logs:GetLogRecord
+                  - ec2:GetConsoleOutput
+                  - ec2:GetConsoleScreenshot
+                  - ec2:GetPasswordData
+                  - glacier:GetJobOutput
+                  - s3-object-lambda:*
+                  - ssm:GetCommandInvocation
+                  - ssm:GetDocument
+                  - secretsmanager:BatchGetSecretValue
+                  - cloudformation:GetTemplate
                 Resource: "*"
 
   Escrita:

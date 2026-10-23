@@ -54,3 +54,18 @@ resource "aws_iam_role_policy" "plan_entra_leitura" {
     }]
   })
 }
+
+# O papel de plan da conta de gerenciamento (bootstrap) recebe a mesma lista estendida
+# de leituras de dado proibidas (menos kms:Decrypt, necessário para ler o estado criptografado).
+resource "aws_iam_role_policy" "plan_nega_leitura_extra" {
+  name = "nega-leitura-de-dados-extra"
+  role = "axiomgo-github-plan"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect      = "Deny"
+      Action      = ["lambda:GetFunction", "dynamodb:PartiQLSelect", "kinesis:Get*", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "logs:StartLiveTail", "logs:GetLogRecord", "ec2:GetConsoleOutput", "ec2:GetConsoleScreenshot", "ec2:GetPasswordData", "glacier:GetJobOutput", "s3-object-lambda:*", "ssm:GetCommandInvocation", "ssm:GetDocument", "secretsmanager:BatchGetSecretValue", "cloudformation:GetTemplate"]
+      NotResource = ["arn:aws:s3:::axiomgo-tfstate-${data.aws_caller_identity.atual.account_id}/*"]
+    }]
+  })
+}
