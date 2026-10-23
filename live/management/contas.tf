@@ -3,10 +3,10 @@
 # Com a raiz centralizada (organizacao.tf), estas contas nascem sem senha de raiz.
 locals {
   contas = {
-    seguranca = { ou = aws_organizations_organizational_unit.seguranca.id, descricao = "GuardDuty, Security Hub, Config (admin delegado)" }
+    seguranca = { ou = aws_organizations_organizational_unit.seguranca.id, descricao = "GuardDuty Security Hub Config - admin delegado" }
     logs      = { ou = aws_organizations_organizational_unit.seguranca.id, descricao = "CloudTrail da organização e logs imutáveis" }
-    teste-br  = { ou = aws_organizations_organizational_unit.workloads.id, descricao = "Teste da célula Brasil (sa-east-1)" }
-    prod-br   = { ou = aws_organizations_organizational_unit.workloads.id, descricao = "Produção da célula Brasil (sa-east-1)" }
+    teste-br  = { ou = aws_organizations_organizational_unit.workloads.id, descricao = "Teste da célula Brasil sa-east-1" }
+    prod-br   = { ou = aws_organizations_organizational_unit.workloads.id, descricao = "Produção da célula Brasil sa-east-1" }
   }
 }
 
@@ -24,6 +24,7 @@ resource "aws_organizations_account" "conta" {
   # Apagar do código só tira a conta da organização; nunca fecha a conta.
   close_on_deletion = false
 
+  # Etiqueta de conta só aceita letras, números, espaço e _ . : / = + - @
   tags = {
     Funcao = each.value.descricao
   }
