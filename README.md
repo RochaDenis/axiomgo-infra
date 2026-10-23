@@ -44,9 +44,10 @@ live/management/             # organização, SCPs, orçamento e anomalia de cus
 | AWS Organizations + OUs `Seguranca` e `Workloads` | `live/management/organizacao.tf` |
 | SCP única `axiomgo-travas`: só `sa-east-1`/`us-east-1`/`eu-central-1`; não desliga auditoria/detecção; papéis de plataforma protegidos; sem usuário IAM com chave; não sai da organização | `live/management/organizacao.tf` |
 | Raiz centralizada: contas-membro sem senha/chave de raiz | `live/management/organizacao.tf` |
+| Contas-membro `seguranca`, `logs` (OU Seguranca), `teste-br`, `prod-br` (OU Workloads) | `live/management/contas.tf` |
 
 ## Próximas PRs
 
-- 0b: contas-membro (`seguranca`, `logs`, `teste`, `prod`), CloudTrail da organização, GuardDuty, Security Hub, Config.
+- 0b-2: CloudTrail da organização (conta `logs`), GuardDuty, Security Hub CSPM + novo Security Hub, Config (admin delegado na conta `seguranca`), monitor de anomalia por conta.
 - 0c: IAM Identity Center com MFA (ativação da instância é 1 clique no console).
 - 1: módulos `rede`, `dados`, `computacao`, `borda`.
