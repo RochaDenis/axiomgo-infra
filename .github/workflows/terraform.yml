@@ -1,8 +1,9 @@
 name: terraform
 
-# PR  -> checagens + plan comentado na PR (papel só leitura: lê o estado, não trava nem grava).
-# main -> plan (mostra o que vai mudar).
-# Run workflow (manual, Denis) no main -> plan salvo como artefato -> apply DESSE plan.
+# PR   -> checagens + plan comentado na PR (papel só leitura: lê o estado, não trava nem grava).
+# main -> checagens + plan salvo -> apply DESSE plan, sozinho, SE o plan só cria/altera.
+#         Se o plan apaga ou recria qualquer coisa, o apply PARA. Só o Denis libera, rodando
+#         "Run workflow" com permitir_destruicao = sim (o Claude nunca usa essa opção).
 
 on:
   pull_request:
@@ -11,6 +12,12 @@ on:
     branches: [main]
     paths: ["live/**", ".github/workflows/terraform.yml"]
   workflow_dispatch:
+    inputs:
+      permitir_destruicao:
+        description: "Liberar plan que apaga/recria recurso (só o Denis)"
+        type: choice
+        options: ["nao", "sim"]
+        default: "nao"
 
 permissions:
   contents: read
@@ -106,12 +113,10 @@ jobs:
           path: ${{ env.STACK }}/tfplan
           retention-days: 7
 
-  # Enquanto o repositório for privado no plano Free, o GitHub NÃO aplica "Required
-  # reviewers" do environment (só no Pro/Team). Por isso o apply só roda quando o Denis
-  # dispara à mão (Actions → terraform → Run workflow, no main). Com o Pro, volta a ser
-  # automático no push, travado pela aprovação do environment.
+  # Repositório privado fora do Enterprise: o GitHub não aplica "Required reviewers".
+  # A trava é a checagem "sem destruição" abaixo, sobre o plan que será aplicado.
   apply:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: plan
     runs-on: ubuntu-latest
     environment: management
@@ -135,6 +140,19 @@ jobs:
       - name: init
         working-directory: ${{ env.STACK }}
         run: terraform init -input=false -backend-config="bucket=axiomgo-tfstate-${{ vars.AWS_ACCOUNT_ID }}"
+      - name: trava - plan não pode apagar nem recriar
+        working-directory: ${{ env.STACK }}
+        env:
+          PERMITIR: ${{ inputs.permitir_destruicao }}
+        run: |
+          terraform show -json tfplan > plan.json
+          DESTROI=$(jq '[.resource_changes[]? | select(.change.actions | index("delete"))] | length' plan.json)
+          echo "recursos que seriam apagados ou recriados: $DESTROI"
+          jq -r '.resource_changes[]? | select(.change.actions | index("delete")) | "  - \(.address) \(.change.actions)"' plan.json
+          if [ "$DESTROI" -gt 0 ] && [ "$PERMITIR" != "sim" ]; then
+            echo "::error::O plan apaga ou recria $DESTROI recurso(s). Parado. Só o Denis libera: Run workflow com permitir_destruicao = sim."
+            exit 1
+          fi
       - name: apply do plan revisado
         working-directory: ${{ env.STACK }}
         run: terraform apply -input=false -lock-timeout=5m tfplan
