@@ -52,7 +52,7 @@ data "aws_iam_policy_document" "freio_permissao" {
       "organizations:AttachPolicy", "organizations:DetachPolicy",
       "organizations:DescribePolicy", "organizations:ListTargetsForPolicy",
     ]
-    resources = [aws_organizations_policy.freio.arn, "arn:aws:organizations::${data.aws_caller_identity.atual.account_id}:root/*"]
+    resources = [aws_organizations_policy.freio.arn, "arn:aws:organizations::${data.aws_caller_identity.atual.account_id}:ou/*"]
   }
 
   # ListPolicies não aceita restrição por recurso.
@@ -89,8 +89,13 @@ resource "aws_budgets_budget_action" "freio" {
 
   definition {
     scp_action_definition {
-      policy_id  = aws_organizations_policy.freio.id
-      target_ids = [aws_organizations_organization.this.roots[0].id]
+      policy_id = aws_organizations_policy.freio.id
+      # A API de Budgets só aceita alvo com 12 a 68 caracteres (conta ou OU); a raiz
+      # (r-xxxx) é recusada. Todas as contas-membro ficam nestas duas OUs.
+      target_ids = [
+        aws_organizations_organizational_unit.seguranca.id,
+        aws_organizations_organizational_unit.workloads.id,
+      ]
     }
   }
 
