@@ -40,6 +40,7 @@ locals {
   papeis_de_plataforma = [
     "arn:aws:iam::*:role/axiomgo-terraform-*",
     "arn:aws:iam::*:role/OrganizationAccountAccessRole",
+    "arn:aws:iam::*:role/stacksets-exec-*", # o StackSet da organização cria os papéis axiomgo-terraform-*
   ]
 
   # Uma SCP só, com todas as travas: a AWS limita a 5 SCPs por alvo (contando a
