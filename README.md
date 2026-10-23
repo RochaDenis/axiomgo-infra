@@ -32,7 +32,7 @@ live/management/             # organização, SCPs, orçamento e anomalia de cus
 4. No GitHub (`Settings` deste repositório):
    - **Secrets and variables → Actions → Variables**: `AWS_ACCOUNT_ID` = número do passo 3.
    - **Environments → New environment** `management` → **Required reviewers**: Denis.
-5. Merge no `main` → o Actions roda o plan. Para aplicar: **Actions → terraform → Run workflow** no `main` (manual enquanto o repositório estiver no plano Free).
+5. Merge no `main` → o Actions roda checagens, plan e aplica sozinho **se o plan só cria ou altera**. Se o plan apagar ou recriar qualquer recurso, o apply para; só o Denis libera em **Run workflow** com `permitir_destruicao = sim`.
 
 ## O que já existe
 
