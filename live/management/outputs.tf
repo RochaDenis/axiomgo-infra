@@ -12,6 +12,9 @@ output "ou_ids" {
 }
 
 output "scp_ids" {
-  description = "IDs das SCPs anexadas à raiz."
-  value       = { for k, p in aws_organizations_policy.scp : k => p.id }
+  description = "IDs das SCPs: travas (sempre anexada à raiz) e freio (anexada pelo orçamento a 100%)."
+  value = {
+    travas = aws_organizations_policy.travas.id
+    freio  = aws_organizations_policy.freio.id
+  }
 }

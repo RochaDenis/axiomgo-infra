@@ -27,16 +27,18 @@ resource "aws_budgets_budget" "mensal" {
   }
 }
 
-resource "aws_ce_anomaly_monitor" "servicos" {
-  name              = "axiomgo-por-servico"
+# A AWS já cria sozinha o monitor "por serviço" (e só permite um por conta). Este olha
+# cada conta da organização, que é o que importa com contas separadas por ambiente.
+resource "aws_ce_anomaly_monitor" "contas" {
+  name              = "axiomgo-por-conta"
   monitor_type      = "DIMENSIONAL"
-  monitor_dimension = "SERVICE"
+  monitor_dimension = "LINKED_ACCOUNT"
 }
 
 resource "aws_ce_anomaly_subscription" "diario" {
   name             = "axiomgo-anomalia-diaria"
   frequency        = "DAILY"
-  monitor_arn_list = [aws_ce_anomaly_monitor.servicos.arn]
+  monitor_arn_list = [aws_ce_anomaly_monitor.contas.arn]
 
   subscriber {
     type    = "EMAIL"

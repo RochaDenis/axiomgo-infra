@@ -1,14 +1,11 @@
 resource "aws_organizations_organization" "this" {
   feature_set = "ALL"
 
+  # Só o que a fase 0 usa. GuardDuty, CloudTrail, Config, Security Hub, Backup e
+  # Identity Center são ligados na 0b pelos recursos de cada serviço (a AWS recomenda
+  # não habilitar acesso confiável "por fora", via Organizations).
   aws_service_access_principals = [
-    "account.amazonaws.com",
-    "backup.amazonaws.com",
-    "cloudtrail.amazonaws.com",
-    "config.amazonaws.com",
-    "guardduty.amazonaws.com",
-    "securityhub.amazonaws.com",
-    "sso.amazonaws.com",
+    "iam.amazonaws.com", # gestão centralizada do usuário raiz das contas-membro
   ]
 
   enabled_policy_types = ["SERVICE_CONTROL_POLICY"]
@@ -16,6 +13,14 @@ resource "aws_organizations_organization" "this" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+# Contas-membro nascem sem senha nem chave de raiz; tarefas de raiz só pela conta de
+# gerenciamento, com sessão curta e auditada.
+resource "aws_iam_organizations_features" "raiz_centralizada" {
+  enabled_features = ["RootCredentialsManagement", "RootSessions"]
+
+  depends_on = [aws_organizations_organization.this]
 }
 
 resource "aws_organizations_organizational_unit" "seguranca" {
@@ -37,114 +42,87 @@ locals {
     "arn:aws:iam::*:role/OrganizationAccountAccessRole",
   ]
 
-  scps = {
-    regioes-permitidas = {
-      descricao = "Nega criar recurso fora das regiões permitidas (dado no país)."
-      politica = {
-        Version = "2012-10-17"
-        Statement = [{
-          Sid    = "NegaForaDasRegioes"
-          Effect = "Deny"
-          NotAction = [
-            "account:*", "acm:*", "aws-marketplace:*", "aws-portal:*", "billing:*",
-            "budgets:*", "ce:*", "cloudfront:*", "config:*", "cur:*", "freetier:*",
-            "globalaccelerator:*", "health:*", "iam:*", "identitystore:*", "invoicing:*",
-            "kms:*", "notifications:*", "organizations:*", "payments:*", "pricing:*",
-            "route53:*", "route53domains:*", "s3:GetAccountPublic*", "s3:ListAllMyBuckets",
-            "s3:PutAccountPublic*", "savingsplans:*", "shield:*", "sso:*", "sso-directory:*",
-            "sts:*", "support:*", "tax:*", "trustedadvisor:*", "waf:*", "wafv2:*",
-            "wellarchitected:*",
-          ]
-          Resource = "*"
-          Condition = {
-            StringNotEquals = { "aws:RequestedRegion" = var.regioes_permitidas }
-          }
-        }]
-      }
-    }
-
-    protege-base-de-seguranca = {
-      descricao = "Nega desligar auditoria e detecção, criar usuário com chave e sair da organização."
-      politica = {
-        Version = "2012-10-17"
-        Statement = [
-          {
-            Sid    = "NegaDesligarAuditoriaEDeteccao"
-            Effect = "Deny"
-            Action = [
-              "cloudtrail:DeleteTrail", "cloudtrail:StopLogging", "cloudtrail:UpdateTrail",
-              "config:DeleteConfigurationRecorder", "config:DeleteDeliveryChannel",
-              "config:StopConfigurationRecorder",
-              "guardduty:DeleteDetector", "guardduty:DisassociateFromAdministratorAccount",
-              "guardduty:UpdateDetector",
-              "securityhub:DisableSecurityHub", "securityhub:DisassociateFromAdministratorAccount",
-              "backup:DeleteBackupVault", "backup:DeleteBackupVaultLockConfiguration",
-              "kms:ScheduleKeyDeletion",
-            ]
-            Resource = "*"
-            Condition = {
-              ArnNotLike = { "aws:PrincipalArn" = local.papeis_de_plataforma }
-            }
-          },
-          {
-            Sid    = "ProtegePapeisDePlataforma"
-            Effect = "Deny"
-            Action = [
-              "iam:AttachRolePolicy", "iam:CreateRole", "iam:DeleteRole", "iam:DeleteRolePermissionsBoundary",
-              "iam:DeleteRolePolicy", "iam:DetachRolePolicy", "iam:PutRolePermissionsBoundary",
-              "iam:PutRolePolicy", "iam:TagRole", "iam:UntagRole", "iam:UpdateAssumeRolePolicy", "iam:UpdateRole",
-            ]
-            Resource = local.papeis_de_plataforma
-            Condition = {
-              ArnNotLike = { "aws:PrincipalArn" = local.papeis_de_plataforma }
-            }
-          },
-          {
-            Sid      = "NegaUsuarioIamComChave"
-            Effect   = "Deny"
-            Action   = ["iam:CreateUser", "iam:CreateAccessKey"]
-            Resource = "*"
-          },
-          {
-            Sid      = "NegaSairDaOrganizacao"
-            Effect   = "Deny"
-            Action   = "organizations:LeaveOrganization"
-            Resource = "*"
-          },
+  # Uma SCP só, com todas as travas: a AWS limita a 5 SCPs por alvo (contando a
+  # FullAWSAccess e o freio de gasto) e a 5.120 caracteres por SCP.
+  travas = {
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "NegaForaDasRegioes"
+        Effect = "Deny"
+        NotAction = [
+          "account:*", "acm:*", "aws-marketplace:*", "aws-portal:*", "billing:*",
+          "budgets:*", "ce:*", "cloudfront:*", "config:*", "cur:*", "freetier:*",
+          "globalaccelerator:*", "health:*", "iam:*", "identitystore:*", "invoicing:*",
+          "kms:*", "notifications:*", "organizations:*", "payments:*", "pricing:*",
+          "route53:*", "route53domains:*", "s3:GetAccountPublic*", "s3:ListAllMyBuckets",
+          "s3:PutAccountPublic*", "savingsplans:*", "shield:*", "sso:*", "sso-directory:*",
+          "sts:*", "support:*", "tax:*", "trustedadvisor:*", "waf:*", "wafv2:*",
+          "wellarchitected:*",
         ]
-      }
-    }
-
-    nega-usuario-raiz = {
-      descricao = "Nega o uso do usuário raiz nas contas-membro."
-      politica = {
-        Version = "2012-10-17"
-        Statement = [{
-          Sid      = "NegaRaiz"
-          Effect   = "Deny"
-          Action   = "*"
-          Resource = "*"
-          Condition = {
-            StringLike = { "aws:PrincipalArn" = "arn:aws:iam::*:root" }
-          }
-        }]
-      }
-    }
+        Resource = "*"
+        Condition = {
+          StringNotEquals = { "aws:RequestedRegion" = var.regioes_permitidas }
+        }
+      },
+      {
+        Sid    = "NegaDesligarAuditoriaEDeteccao"
+        Effect = "Deny"
+        Action = [
+          "cloudtrail:DeleteTrail", "cloudtrail:StopLogging", "cloudtrail:UpdateTrail",
+          "config:DeleteConfigurationRecorder", "config:DeleteDeliveryChannel",
+          "config:StopConfigurationRecorder",
+          "guardduty:DeleteDetector", "guardduty:DisassociateFromAdministratorAccount",
+          "guardduty:UpdateDetector",
+          "securityhub:DisableSecurityHub", "securityhub:DisassociateFromAdministratorAccount",
+          "backup:DeleteBackupVault", "backup:DeleteBackupVaultLockConfiguration",
+          "kms:ScheduleKeyDeletion",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnNotLike = { "aws:PrincipalArn" = local.papeis_de_plataforma }
+        }
+      },
+      {
+        Sid    = "ProtegePapeisDePlataforma"
+        Effect = "Deny"
+        Action = [
+          "iam:AttachRolePolicy", "iam:CreateRole", "iam:DeleteRole", "iam:DeleteRolePermissionsBoundary",
+          "iam:DeleteRolePolicy", "iam:DetachRolePolicy", "iam:PutRolePermissionsBoundary",
+          "iam:PutRolePolicy", "iam:TagRole", "iam:UntagRole", "iam:UpdateAssumeRolePolicy", "iam:UpdateRole",
+        ]
+        Resource = local.papeis_de_plataforma
+        Condition = {
+          ArnNotLike = { "aws:PrincipalArn" = local.papeis_de_plataforma }
+        }
+      },
+      {
+        Sid      = "NegaUsuarioIamComChave"
+        Effect   = "Deny"
+        Action   = ["iam:CreateUser", "iam:CreateAccessKey"]
+        Resource = "*"
+      },
+      {
+        Sid      = "NegaSairDaOrganizacao"
+        Effect   = "Deny"
+        Action   = "organizations:LeaveOrganization"
+        Resource = "*"
+      },
+      # Sem "nega raiz": as contas-membro já nascem sem credencial de raiz
+      # (aws_iam_organizations_features), e uma SCP dessas bloquearia também as
+      # sessões de raiz de recuperação feitas pela conta de gerenciamento.
+    ]
   }
 }
 
-resource "aws_organizations_policy" "scp" {
-  for_each = local.scps
-
-  name        = "axiomgo-${each.key}"
-  description = each.value.descricao
+resource "aws_organizations_policy" "travas" {
+  name        = "axiomgo-travas"
+  description = "Regioes permitidas, auditoria e deteccao protegidas, papeis de plataforma protegidos, sem chave IAM."
   type        = "SERVICE_CONTROL_POLICY"
-  content     = jsonencode(each.value.politica)
+  content     = jsonencode(local.travas)
 }
 
-resource "aws_organizations_policy_attachment" "raiz" {
-  for_each = aws_organizations_policy.scp
-
-  policy_id = each.value.id
+resource "aws_organizations_policy_attachment" "travas_raiz" {
+  policy_id = aws_organizations_policy.travas.id
   target_id = aws_organizations_organization.this.roots[0].id
 }
