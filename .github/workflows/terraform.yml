@@ -85,6 +85,18 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/axiomgo-github-plan
           aws-region: ${{ env.AWS_REGION }}
+      # Perfis das contas-membro: o mesmo código usa "leitura" neste job.
+      - name: perfis das contas-membro (leitura)
+        run: |
+          mkdir -p ~/.aws
+          : > ~/.aws/config
+          for conta in seguranca logs teste-br prod-br; do
+            id=$(aws organizations list-accounts --query "Accounts[?Name=='axiomgo-$conta' && Status=='ACTIVE'].Id" --output text)
+            if [ -n "$id" ] && [ "$id" != "None" ]; then
+              printf '[profile %s]\nrole_arn = arn:aws:iam::%s:role/axiomgo-terraform-leitura\ncredential_source = Environment\nregion = sa-east-1\n\n' "$conta" "$id" >> ~/.aws/config
+            fi
+          done
+          grep -c '^\[profile' ~/.aws/config || true
       - name: init
         working-directory: ${{ env.STACK }}
         run: terraform init -input=false -backend-config="bucket=axiomgo-tfstate-${{ vars.AWS_ACCOUNT_ID }}"
@@ -133,6 +145,18 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/axiomgo-github-apply
           aws-region: ${{ env.AWS_REGION }}
+      # Perfis das contas-membro: o mesmo código usa "escrita" neste job.
+      - name: perfis das contas-membro (escrita)
+        run: |
+          mkdir -p ~/.aws
+          : > ~/.aws/config
+          for conta in seguranca logs teste-br prod-br; do
+            id=$(aws organizations list-accounts --query "Accounts[?Name=='axiomgo-$conta' && Status=='ACTIVE'].Id" --output text)
+            if [ -n "$id" ] && [ "$id" != "None" ]; then
+              printf '[profile %s]\nrole_arn = arn:aws:iam::%s:role/axiomgo-terraform-escrita\ncredential_source = Environment\nregion = sa-east-1\n\n' "$conta" "$id" >> ~/.aws/config
+            fi
+          done
+          grep -c '^\[profile' ~/.aws/config || true
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: tfplan

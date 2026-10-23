@@ -5,7 +5,9 @@ resource "aws_organizations_organization" "this" {
   # Identity Center são ligados na 0b pelos recursos de cada serviço (a AWS recomenda
   # não habilitar acesso confiável "por fora", via Organizations).
   aws_service_access_principals = [
-    "iam.amazonaws.com", # gestão centralizada do usuário raiz das contas-membro
+    "cloudtrail.amazonaws.com", # trilha de auditoria da organização (auditoria.tf)
+    "guardduty.amazonaws.com",  # admin delegado do GuardDuty (deteccao.tf)
+    "iam.amazonaws.com",        # gestão centralizada do usuário raiz das contas-membro
   ]
 
   enabled_policy_types = ["SERVICE_CONTROL_POLICY"]
@@ -77,6 +79,7 @@ locals {
           "guardduty:UpdateDetector",
           "securityhub:DisableSecurityHub", "securityhub:DisassociateFromAdministratorAccount",
           "backup:DeleteBackupVault", "backup:DeleteBackupVaultLockConfiguration",
+          "s3:BypassGovernanceRetention", "s3:PutObjectLegalHold", "s3:PutBucketObjectLockConfiguration",
           "kms:ScheduleKeyDeletion",
         ]
         Resource = "*"
