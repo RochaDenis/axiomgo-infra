@@ -1,8 +1,8 @@
 name: terraform
 
 # PR  -> checagens + plan comentado na PR (papel só leitura: lê o estado, não trava nem grava).
-# main -> plan salvo como artefato -> apply DESSE plan, só depois da aprovação do Denis
-#         no environment protegido "management".
+# main -> plan (mostra o que vai mudar).
+# Run workflow (manual, Denis) no main -> plan salvo como artefato -> apply DESSE plan.
 
 on:
   pull_request:
@@ -106,8 +106,12 @@ jobs:
           path: ${{ env.STACK }}/tfplan
           retention-days: 7
 
+  # Enquanto o repositório for privado no plano Free, o GitHub NÃO aplica "Required
+  # reviewers" do environment (só no Pro/Team). Por isso o apply só roda quando o Denis
+  # dispara à mão (Actions → terraform → Run workflow, no main). Com o Pro, volta a ser
+  # automático no push, travado pela aprovação do environment.
   apply:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     needs: plan
     runs-on: ubuntu-latest
     environment: management

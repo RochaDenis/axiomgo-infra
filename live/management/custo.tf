@@ -27,29 +27,6 @@ resource "aws_budgets_budget" "mensal" {
   }
 }
 
-# A AWS já cria sozinha o monitor "por serviço" (e só permite um por conta). Este olha
-# cada conta da organização, que é o que importa com contas separadas por ambiente.
-resource "aws_ce_anomaly_monitor" "contas" {
-  name              = "axiomgo-por-conta"
-  monitor_type      = "DIMENSIONAL"
-  monitor_dimension = "LINKED_ACCOUNT"
-}
-
-resource "aws_ce_anomaly_subscription" "diario" {
-  name             = "axiomgo-anomalia-diaria"
-  frequency        = "DAILY"
-  monitor_arn_list = [aws_ce_anomaly_monitor.contas.arn]
-
-  subscriber {
-    type    = "EMAIL"
-    address = var.alert_email
-  }
-
-  threshold_expression {
-    dimension {
-      key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
-      match_options = ["GREATER_THAN_OR_EQUAL"]
-      values        = [tostring(var.anomalia_minima_usd)]
-    }
-  }
-}
+# Anomalia de custo: precisa do Cost Explorer ativado na conta (1 clique no console,
+# até 24 h para liberar). Com ele ativo, a AWS cria sozinha o monitor por serviço e o
+# alerta diário. O monitor por conta entra na 0b, junto com as contas-membro.

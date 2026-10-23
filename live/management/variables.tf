@@ -15,12 +15,6 @@ variable "budget_mensal_usd" {
   }
 }
 
-variable "anomalia_minima_usd" {
-  description = "Impacto mínimo, em USD, para avisar sobre gasto fora do padrão."
-  type        = number
-  default     = 20
-}
-
 variable "regioes_permitidas" {
   description = "Únicas regiões onde as contas-membro podem criar recursos (dado no país)."
   type        = list(string)
