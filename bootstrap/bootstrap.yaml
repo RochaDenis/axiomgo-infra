@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  AxiomGO - arranque da conta de gerenciamento. Roda UMA vez, no CloudShell.
+  Cria o bucket do estado do Terraform e a ponte OIDC GitHub -> AWS (sem chave fixa).
+  Depois disto, toda mudança passa por PR no repositorio axiomgo-infra.
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Default: RochaDenis
+  GitHubRepo:
+    Type: String
+    Default: axiomgo-infra
+  ApplyEnvironment:
+    Type: String
+    Default: management
+    Description: Environment protegido do GitHub que pode aplicar (exige aprovacao do Denis).
+
+Resources:
+  StateBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_18
+            comment: Acesso ao estado é auditado pelo CloudTrail da organização (eventos de dados S3), fase 0b.
+    Properties:
+      BucketName: !Sub axiomgo-tfstate-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: versoes-antigas-1-ano
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 365
+      Tags:
+        - { Key: Project, Value: axiomgo }
+        - { Key: Owner, Value: denis }
+        - { Key: ManagedBy, Value: cloudformation-bootstrap }
+
+  StateBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StateBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: SomenteTLS
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt StateBucket.Arn
+              - !Sub ${StateBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  GitHubOidc:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  # Leitura: roda o plan em PR e no main. Nao altera nada.
+  PlanRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: axiomgo-github-plan
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOidc
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub repo:${GitHubOwner}/${GitHubRepo}:pull_request
+                  - !Sub repo:${GitHubOwner}/${GitHubRepo}:ref:refs/heads/main
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+      Policies:
+        - PolicyName: estado-terraform
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt StateBucket.Arn
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: !Sub ${StateBucket.Arn}/*
+
+  # Escrita: so o environment protegido do GitHub (aprovacao do Denis) assume.
+  ApplyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: axiomgo-github-apply
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOidc
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOwner}/${GitHubRepo}:environment:${ApplyEnvironment}
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+Outputs:
+  StateBucket:
+    Value: !Ref StateBucket
+  PlanRoleArn:
+    Value: !GetAtt PlanRole.Arn
+  ApplyRoleArn:
+    Value: !GetAtt ApplyRole.Arn
