@@ -104,8 +104,8 @@ locals {
         Sid    = "ProtegeBucketDaTrilha"
         Effect = "Deny"
         Action = [
-          "s3:DeleteBucket", "s3:DeleteBucketPolicy", "s3:PutBucketPolicy", "s3:PutLifecycleConfiguration",
-          "s3:PutEncryptionConfiguration", "s3:PutBucketVersioning", "s3:PutBucketPublicAccessBlock",
+          "s3:PutBucket*", "s3:DeleteBucket*", "s3:PutLifecycleConfiguration", "s3:PutEncryptionConfiguration",
+          "s3:PutReplicationConfiguration", "s3:PutAccelerateConfiguration", "s3:PutInventoryConfiguration",
         ]
         Resource = ["arn:aws:s3:::axiomgo-cloudtrail-*"]
         Condition = {
@@ -117,7 +117,8 @@ locals {
         Effect = "Deny"
         Action = [
           "kms:DisableKey", "kms:PutKeyPolicy", "kms:CreateGrant", "kms:RevokeGrant", "kms:DeleteAlias",
-          "kms:TagResource", "kms:UntagResource", "kms:ScheduleKeyDeletion",
+          "kms:TagResource", "kms:UntagResource", "kms:ScheduleKeyDeletion", "kms:DisableKeyRotation",
+          "kms:UpdateAlias", "kms:UpdateKeyDescription",
         ]
         Resource = "*"
         Condition = {
