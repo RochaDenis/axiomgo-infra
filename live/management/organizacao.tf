@@ -8,6 +8,9 @@ resource "aws_organizations_organization" "this" {
     "cloudtrail.amazonaws.com", # trilha de auditoria da organização (auditoria.tf)
     "guardduty.amazonaws.com",  # admin delegado do GuardDuty (deteccao.tf)
     "iam.amazonaws.com",        # gestão centralizada do usuário raiz das contas-membro
+    # Ligado pela esteira com `aws cloudformation activate-organizations-access`; fica
+    # aqui para o Terraform não tentar retirá-lo (o StackSet dos papéis depende dele).
+    "member.org.stacksets.cloudformation.amazonaws.com",
   ]
 
   enabled_policy_types = ["SERVICE_CONTROL_POLICY"]
