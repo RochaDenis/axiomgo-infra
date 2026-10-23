@@ -144,7 +144,12 @@ jobs:
         working-directory: ${{ env.STACK }}
         env:
           PERMITIR: ${{ inputs.permitir_destruicao }}
+          QUEM: ${{ github.triggering_actor }}
         run: |
+          if [ "$PERMITIR" = "sim" ] && [ "$QUEM" != "RochaDenis" ]; then
+            echo "::error::permitir_destruicao = sim só vale quando disparado pelo Denis (RochaDenis); disparado por $QUEM."
+            exit 1
+          fi
           terraform show -json tfplan > plan.json
           DESTROI=$(jq '[.resource_changes[]? | select(.change.actions | index("delete"))] | length' plan.json)
           echo "recursos que seriam apagados ou recriados: $DESTROI"
