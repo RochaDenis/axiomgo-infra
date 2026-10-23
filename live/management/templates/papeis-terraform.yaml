@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  AxiomGO - papeis do Terraform em cada conta-membro (via StackSet da organizacao).
+  leitura: so o plan (papel axiomgo-github-plan da conta de gerenciamento).
+  escrita: so o apply (papel axiomgo-github-apply da conta de gerenciamento).
+
+Parameters:
+  ContaGerenciamento:
+    Type: String
+
+Resources:
+  Leitura:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: axiomgo-terraform-leitura
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${ContaGerenciamento}:role/axiomgo-github-plan
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+      Policies:
+        - PolicyName: nega-leitura-de-dados
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # ReadOnlyAccess le configuracao; aqui se corta leitura de DADO e de segredo.
+              - Effect: Deny
+                Action:
+                  - s3:GetObject*
+                  - secretsmanager:GetSecretValue
+                  - ssm:GetParameter*
+                  - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - rds-data:*
+                  - logs:GetLogEvents
+                  - logs:FilterLogEvents
+                  - logs:StartQuery
+                  - athena:GetQueryResults
+                  - sqs:ReceiveMessage
+                  - kms:Decrypt
+                Resource: "*"
+
+  Escrita:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: axiomgo-terraform-escrita
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${ContaGerenciamento}:role/axiomgo-github-apply
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
