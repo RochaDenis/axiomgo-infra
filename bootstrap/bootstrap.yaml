@@ -11,6 +11,14 @@ Parameters:
   GitHubRepo:
     Type: String
     Default: axiomgo-infra
+  # O GitHub manda o sub com os IDs imutáveis do dono e do repositório
+  # (repo:Dono@<id>/repo@<id>:...). Renomear ou recriar o repositório não herda a confiança.
+  GitHubOwnerId:
+    Type: String
+    Default: "49164278"
+  GitHubRepoId:
+    Type: String
+    Default: "1431366406"
   ApplyEnvironment:
     Type: String
     Default: management
@@ -100,8 +108,8 @@ Resources:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
                 token.actions.githubusercontent.com:sub:
-                  - !Sub repo:${GitHubOwner}/${GitHubRepo}:pull_request
-                  - !Sub repo:${GitHubOwner}/${GitHubRepo}:ref:refs/heads/main
+                  - !Sub repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepo}@${GitHubRepoId}:pull_request
+                  - !Sub repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepo}@${GitHubRepoId}:ref:refs/heads/main
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/ReadOnlyAccess
       Policies:
@@ -155,7 +163,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOwner}/${GitHubRepo}:environment:${ApplyEnvironment}
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepo}@${GitHubRepoId}:environment:${ApplyEnvironment}
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
 
