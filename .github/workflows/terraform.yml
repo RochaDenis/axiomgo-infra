@@ -1,6 +1,6 @@
 name: terraform
 
-# PR  -> checagens + plan comentado na PR (papel só leitura).
+# PR  -> checagens + plan comentado na PR (papel só leitura: lê o estado, não trava nem grava).
 # main -> plan salvo como artefato -> apply DESSE plan, só depois da aprovação do Denis
 #         no environment protegido "management".
 
@@ -84,7 +84,7 @@ jobs:
       - name: plan
         working-directory: ${{ env.STACK }}
         run: |
-          terraform plan -input=false -lock-timeout=5m -out=tfplan
+          terraform plan -input=false -lock=false -out=tfplan
           terraform show -no-color tfplan > plan.txt
       - name: comentar plan na PR
         if: github.event_name == 'pull_request'

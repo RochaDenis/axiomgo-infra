@@ -105,16 +105,39 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/ReadOnlyAccess
       Policies:
-        - PolicyName: estado-terraform
+        - PolicyName: estado-terraform-so-leitura
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt StateBucket.Arn
+              # Só lê o estado. O plan roda com -lock=false; quem trava e grava é o apply.
               - Effect: Allow
-                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Action: s3:GetObject
                 Resource: !Sub ${StateBucket.Arn}/*
+        - PolicyName: nega-leitura-de-dados
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # ReadOnlyAccess lê configuração; aqui se corta leitura de DADO e de segredo.
+              - Effect: Deny
+                Action:
+                  - s3:GetObject*
+                  - secretsmanager:GetSecretValue
+                  - ssm:GetParameter*
+                  - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - rds-data:*
+                  - logs:GetLogEvents
+                  - logs:FilterLogEvents
+                  - logs:StartQuery
+                  - athena:GetQueryResults
+                  - sqs:ReceiveMessage
+                NotResource:
+                  - !Sub ${StateBucket.Arn}/*
 
   # Escrita: so o environment protegido do GitHub (aprovacao do Denis) assume.
   ApplyRole:

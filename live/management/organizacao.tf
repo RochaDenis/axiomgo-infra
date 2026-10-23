@@ -87,6 +87,19 @@ locals {
             }
           },
           {
+            Sid    = "ProtegePapeisDePlataforma"
+            Effect = "Deny"
+            Action = [
+              "iam:AttachRolePolicy", "iam:CreateRole", "iam:DeleteRole", "iam:DeleteRolePermissionsBoundary",
+              "iam:DeleteRolePolicy", "iam:DetachRolePolicy", "iam:PutRolePermissionsBoundary",
+              "iam:PutRolePolicy", "iam:TagRole", "iam:UntagRole", "iam:UpdateAssumeRolePolicy", "iam:UpdateRole",
+            ]
+            Resource = local.papeis_de_plataforma
+            Condition = {
+              ArnNotLike = { "aws:PrincipalArn" = local.papeis_de_plataforma }
+            }
+          },
+          {
             Sid      = "NegaUsuarioIamComChave"
             Effect   = "Deny"
             Action   = ["iam:CreateUser", "iam:CreateAccessKey"]
