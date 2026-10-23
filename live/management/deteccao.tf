@@ -1,9 +1,19 @@
 # Detecção de ameaças: GuardDuty com administração delegada na conta "seguranca",
 # ligado sozinho em todas as contas da organização (atuais e futuras), em sa-east-1.
+# A AWS exige o GuardDuty ligado na conta de gerenciamento antes de nomear a
+# administradora delegada (sem ele: BadRequestException "invalid or out-of-range value").
+resource "aws_guardduty_detector" "gerenciamento" {
+  enable                       = true
+  finding_publishing_frequency = "FIFTEEN_MINUTES"
+}
+
 resource "aws_guardduty_organization_admin_account" "seguranca" {
   admin_account_id = aws_organizations_account.conta["seguranca"].id
 
-  depends_on = [aws_organizations_organization.this]
+  depends_on = [
+    aws_organizations_organization.this,
+    aws_guardduty_detector.gerenciamento,
+  ]
 }
 
 resource "aws_guardduty_detector" "seguranca" {
