@@ -101,6 +101,31 @@ locals {
         }
       },
       {
+        Sid    = "ProtegeBucketDaTrilha"
+        Effect = "Deny"
+        Action = [
+          "s3:DeleteBucket", "s3:DeleteBucketPolicy", "s3:PutBucketPolicy", "s3:PutLifecycleConfiguration",
+          "s3:PutEncryptionConfiguration", "s3:PutBucketVersioning", "s3:PutBucketPublicAccessBlock",
+        ]
+        Resource = ["arn:aws:s3:::axiomgo-cloudtrail-*"]
+        Condition = {
+          ArnNotLike = { "aws:PrincipalArn" = local.papeis_de_plataforma }
+        }
+      },
+      {
+        Sid    = "ProtegeChaveDaTrilha"
+        Effect = "Deny"
+        Action = [
+          "kms:DisableKey", "kms:PutKeyPolicy", "kms:CreateGrant", "kms:RevokeGrant", "kms:DeleteAlias",
+          "kms:TagResource", "kms:UntagResource", "kms:ScheduleKeyDeletion",
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = { "aws:ResourceTag/Protecao" = "auditoria" }
+          ArnNotLike   = { "aws:PrincipalArn" = local.papeis_de_plataforma }
+        }
+      },
+      {
         Sid      = "NegaUsuarioIamComChave"
         Effect   = "Deny"
         Action   = ["iam:CreateUser", "iam:CreateAccessKey"]

@@ -85,21 +85,24 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/axiomgo-github-plan
           aws-region: ${{ env.AWS_REGION }}
-      # Perfis das contas-membro: o mesmo código usa "leitura" neste job.
-      - name: perfis das contas-membro (leitura)
-        run: |
-          mkdir -p ~/.aws
-          : > ~/.aws/config
-          for conta in seguranca logs teste-br prod-br; do
-            id=$(aws organizations list-accounts --query "Accounts[?Name=='axiomgo-$conta' && Status=='ACTIVE'].Id" --output text)
-            if [ -n "$id" ] && [ "$id" != "None" ]; then
-              printf '[profile %s]\nrole_arn = arn:aws:iam::%s:role/axiomgo-terraform-leitura\ncredential_source = Environment\nregion = sa-east-1\n\n' "$conta" "$id" >> ~/.aws/config
-            fi
-          done
-          grep -c '^\[profile' ~/.aws/config || true
       - name: init
         working-directory: ${{ env.STACK }}
         run: terraform init -input=false -backend-config="bucket=axiomgo-tfstate-${{ vars.AWS_ACCOUNT_ID }}"
+      # Perfis das contas-membro: o mesmo código usa "leitura" neste job. Os números
+      # vêm do estado (output "contas"); o provedor ainda confere a conta (allowed_account_ids).
+      - name: perfis das contas-membro (leitura)
+        working-directory: ${{ env.STACK }}
+        run: |
+          mkdir -p ~/.aws
+          : > ~/.aws/config
+          terraform output -json contas 2>/dev/null > contas.json || echo '{}' > contas.json
+          jq -r 'to_entries[] | "\(.key) \(.value)"' contas.json | while read -r conta id; do
+            if ! printf '%s' "$id" | grep -Eq '^[0-9]{12}$'; then
+              echo "::error::id inválido para $conta"; exit 1
+            fi
+            printf '[profile %s]\nrole_arn = arn:aws:iam::%s:role/axiomgo-terraform-leitura\ncredential_source = Environment\nregion = sa-east-1\n\n' "$conta" "$id" >> ~/.aws/config
+          done
+          grep -c '^\[profile' ~/.aws/config || true
       - name: plan
         working-directory: ${{ env.STACK }}
         run: |
@@ -145,18 +148,6 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/axiomgo-github-apply
           aws-region: ${{ env.AWS_REGION }}
-      # Perfis das contas-membro: o mesmo código usa "escrita" neste job.
-      - name: perfis das contas-membro (escrita)
-        run: |
-          mkdir -p ~/.aws
-          : > ~/.aws/config
-          for conta in seguranca logs teste-br prod-br; do
-            id=$(aws organizations list-accounts --query "Accounts[?Name=='axiomgo-$conta' && Status=='ACTIVE'].Id" --output text)
-            if [ -n "$id" ] && [ "$id" != "None" ]; then
-              printf '[profile %s]\nrole_arn = arn:aws:iam::%s:role/axiomgo-terraform-escrita\ncredential_source = Environment\nregion = sa-east-1\n\n' "$conta" "$id" >> ~/.aws/config
-            fi
-          done
-          grep -c '^\[profile' ~/.aws/config || true
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: tfplan
@@ -164,6 +155,21 @@ jobs:
       - name: init
         working-directory: ${{ env.STACK }}
         run: terraform init -input=false -backend-config="bucket=axiomgo-tfstate-${{ vars.AWS_ACCOUNT_ID }}"
+      # Perfis das contas-membro: o mesmo código usa "escrita" neste job. Os números
+      # vêm do estado (output "contas"); o provedor ainda confere a conta (allowed_account_ids).
+      - name: perfis das contas-membro (escrita)
+        working-directory: ${{ env.STACK }}
+        run: |
+          mkdir -p ~/.aws
+          : > ~/.aws/config
+          terraform output -json contas 2>/dev/null > contas.json || echo '{}' > contas.json
+          jq -r 'to_entries[] | "\(.key) \(.value)"' contas.json | while read -r conta id; do
+            if ! printf '%s' "$id" | grep -Eq '^[0-9]{12}$'; then
+              echo "::error::id inválido para $conta"; exit 1
+            fi
+            printf '[profile %s]\nrole_arn = arn:aws:iam::%s:role/axiomgo-terraform-escrita\ncredential_source = Environment\nregion = sa-east-1\n\n' "$conta" "$id" >> ~/.aws/config
+          done
+          grep -c '^\[profile' ~/.aws/config || true
       - name: trava - plan não pode apagar nem recriar
         working-directory: ${{ env.STACK }}
         env:
