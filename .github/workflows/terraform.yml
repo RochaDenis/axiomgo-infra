@@ -158,6 +158,10 @@ jobs:
             echo "::error::O plan apaga ou recria $DESTROI recurso(s). Parado. Só o Denis libera: Run workflow com permitir_destruicao = sim."
             exit 1
           fi
+      # Acesso confiável do StackSet na organização: forma recomendada pela AWS
+      # (idempotente; não faz nada se já estiver ativo).
+      - name: ativar StackSets da organização
+        run: aws cloudformation activate-organizations-access --region "$AWS_REGION"
       - name: apply do plan revisado
         working-directory: ${{ env.STACK }}
         run: terraform apply -input=false -lock-timeout=5m tfplan
