@@ -3,6 +3,7 @@
 # A AWS exige o GuardDuty ligado na conta de gerenciamento antes de nomear a
 # administradora delegada (sem ele: BadRequestException "invalid or out-of-range value").
 resource "aws_guardduty_detector" "gerenciamento" {
+  #checkov:skip=CKV2_AWS_3:A configuração da organização fica na conta seguranca (admin delegado), em aws_guardduty_organization_configuration.todas.
   enable                       = true
   finding_publishing_frequency = "FIFTEEN_MINUTES"
 }
