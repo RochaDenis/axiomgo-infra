@@ -47,7 +47,7 @@ live/management/             # organização, SCPs, orçamento e anomalia de cus
 | Contas-membro `seguranca`, `logs` (OU Seguranca), `teste-br`, `prod-br` (OU Workloads) | `live/management/contas.tf` |
 | Papéis `axiomgo-terraform-leitura` (plan) e `-escrita` (apply) em cada conta-membro, via StackSet | `live/management/papeis-contas.tf` |
 | Trilha de auditoria da organização na conta `logs`: KMS, validação de integridade, retenção travada 1 ano | `live/management/auditoria.tf` |
-| GuardDuty em todas as contas (admin delegado: `seguranca`), S3, RDS e malware | `live/management/deteccao.tf` |
+| GuardDuty em todas as contas (admin delegado: `seguranca`), proteção de S3 e de banco | `live/management/deteccao.tf` |
 
 ## Próximas PRs
 

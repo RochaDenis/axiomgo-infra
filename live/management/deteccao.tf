@@ -35,7 +35,10 @@ resource "aws_guardduty_organization_configuration" "todas" {
 
 resource "aws_guardduty_organization_configuration_feature" "recursos" {
   provider = aws.seguranca
-  for_each = toset(["S3_DATA_EVENTS", "RDS_LOGIN_EVENTS", "EBS_MALWARE_PROTECTION"])
+  # Sem EBS_MALWARE_PROTECTION: a plataforma roda em Fargate (sem discos EBS), e o
+  # recurso exige acesso confiável extra na organização. O equivalente para contêineres
+  # (RUNTIME_MONITORING com agente no Fargate) entra junto com a célula Brasil.
+  for_each = toset(["S3_DATA_EVENTS", "RDS_LOGIN_EVENTS"])
 
   detector_id = aws_guardduty_detector.seguranca.id
   name        = each.key
