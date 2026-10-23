@@ -120,6 +120,8 @@ resource "aws_organizations_policy" "travas" {
   description = "Regioes permitidas, auditoria e deteccao protegidas, papeis de plataforma protegidos, sem chave IAM."
   type        = "SERVICE_CONTROL_POLICY"
   content     = jsonencode(local.travas)
+
+  depends_on = [aws_organizations_organization.this]
 }
 
 resource "aws_organizations_policy_attachment" "travas_raiz" {

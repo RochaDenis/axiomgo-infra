@@ -32,14 +32,14 @@ live/management/             # organização, SCPs, orçamento e anomalia de cus
 4. No GitHub (`Settings` deste repositório):
    - **Secrets and variables → Actions → Variables**: `AWS_ACCOUNT_ID` = número do passo 3.
    - **Environments → New environment** `management` → **Required reviewers**: Denis.
-5. Merge da PR inicial → o Actions cria organização, SCPs, orçamento e alerta de anomalia.
+5. Merge no `main` → o Actions roda o plan. Para aplicar: **Actions → terraform → Run workflow** no `main` (manual enquanto o repositório estiver no plano Free).
 
 ## O que já existe
 
 | Item | Onde |
 | --- | --- |
 | Orçamento US$ 200/mês, avisos 50/80/100% e previsão de estouro | `live/management/custo.tf` |
-| Alerta diário de gasto fora do padrão por conta (≥ US$ 20); o monitor por serviço a AWS cria sozinha | `live/management/custo.tf` |
+| Alerta de anomalia de custo: a AWS cria sozinha ao ativar o Cost Explorer (1 clique no console) | console |
 | **Freio:** a 100% do orçamento, SCP automática impede criar recurso novo (o que roda continua; banco intocado) | `live/management/freio.tf` |
 | AWS Organizations + OUs `Seguranca` e `Workloads` | `live/management/organizacao.tf` |
 | SCP única `axiomgo-travas`: só `sa-east-1`/`us-east-1`/`eu-central-1`; não desliga auditoria/detecção; papéis de plataforma protegidos; sem usuário IAM com chave; não sai da organização | `live/management/organizacao.tf` |

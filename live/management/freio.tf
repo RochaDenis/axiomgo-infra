@@ -25,6 +25,8 @@ resource "aws_organizations_policy" "freio" {
       Resource = "*"
     }]
   })
+
+  depends_on = [aws_organizations_organization.this]
 }
 
 data "aws_iam_policy_document" "freio_confianca" {
