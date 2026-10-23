@@ -5,7 +5,9 @@ resource "aws_organizations_organization" "this" {
   # Identity Center são ligados na 0b pelos recursos de cada serviço (a AWS recomenda
   # não habilitar acesso confiável "por fora", via Organizations).
   aws_service_access_principals = [
-    "iam.amazonaws.com", # gestão centralizada do usuário raiz das contas-membro
+    "cloudtrail.amazonaws.com", # trilha de auditoria da organização (auditoria.tf)
+    "guardduty.amazonaws.com",  # admin delegado do GuardDuty (deteccao.tf)
+    "iam.amazonaws.com",        # gestão centralizada do usuário raiz das contas-membro
   ]
 
   enabled_policy_types = ["SERVICE_CONTROL_POLICY"]
@@ -77,6 +79,7 @@ locals {
           "guardduty:UpdateDetector",
           "securityhub:DisableSecurityHub", "securityhub:DisassociateFromAdministratorAccount",
           "backup:DeleteBackupVault", "backup:DeleteBackupVaultLockConfiguration",
+          "s3:BypassGovernanceRetention", "s3:PutObjectLegalHold", "s3:PutBucketObjectLockConfiguration",
           "kms:ScheduleKeyDeletion",
         ]
         Resource = "*"
@@ -95,6 +98,32 @@ locals {
         Resource = local.papeis_de_plataforma
         Condition = {
           ArnNotLike = { "aws:PrincipalArn" = local.papeis_de_plataforma }
+        }
+      },
+      {
+        Sid    = "ProtegeBucketDaTrilha"
+        Effect = "Deny"
+        Action = [
+          "s3:PutBucket*", "s3:DeleteBucket*", "s3:PutLifecycleConfiguration", "s3:PutEncryptionConfiguration",
+          "s3:PutReplicationConfiguration", "s3:PutAccelerateConfiguration", "s3:PutInventoryConfiguration",
+        ]
+        Resource = ["arn:aws:s3:::axiomgo-cloudtrail-*"]
+        Condition = {
+          ArnNotLike = { "aws:PrincipalArn" = local.papeis_de_plataforma }
+        }
+      },
+      {
+        Sid    = "ProtegeChaveDaTrilha"
+        Effect = "Deny"
+        Action = [
+          "kms:DisableKey", "kms:PutKeyPolicy", "kms:CreateGrant", "kms:RevokeGrant", "kms:DeleteAlias",
+          "kms:TagResource", "kms:UntagResource", "kms:ScheduleKeyDeletion", "kms:DisableKeyRotation",
+          "kms:UpdateAlias", "kms:UpdateKeyDescription",
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = { "aws:ResourceTag/Protecao" = "auditoria" }
+          ArnNotLike   = { "aws:PrincipalArn" = local.papeis_de_plataforma }
         }
       },
       {

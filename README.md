@@ -45,9 +45,12 @@ live/management/             # organização, SCPs, orçamento e anomalia de cus
 | SCP única `axiomgo-travas`: só `sa-east-1`/`us-east-1`/`eu-central-1`; não desliga auditoria/detecção; papéis de plataforma protegidos; sem usuário IAM com chave; não sai da organização | `live/management/organizacao.tf` |
 | Raiz centralizada: contas-membro sem senha/chave de raiz | `live/management/organizacao.tf` |
 | Contas-membro `seguranca`, `logs` (OU Seguranca), `teste-br`, `prod-br` (OU Workloads) | `live/management/contas.tf` |
+| Papéis `axiomgo-terraform-leitura` (plan) e `-escrita` (apply) em cada conta-membro, via StackSet | `live/management/papeis-contas.tf` |
+| Trilha de auditoria da organização na conta `logs`: KMS, validação de integridade, retenção travada 1 ano | `live/management/auditoria.tf` |
+| GuardDuty em todas as contas (admin delegado: `seguranca`), S3, RDS e malware | `live/management/deteccao.tf` |
 
 ## Próximas PRs
 
-- 0b-2: CloudTrail da organização (conta `logs`), GuardDuty, Security Hub CSPM + novo Security Hub, Config (admin delegado na conta `seguranca`), monitor de anomalia por conta.
+- 0b-3: Security Hub CSPM + novo Security Hub, Config (admin delegado na conta `seguranca`), IAM Access Analyzer, monitor de anomalia por conta, alertas no Discord.
 - 0c: IAM Identity Center com MFA (ativação da instância é 1 clique no console).
 - 1: módulos `rede`, `dados`, `computacao`, `borda`.
