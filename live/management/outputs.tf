@@ -18,3 +18,8 @@ output "scp_ids" {
     freio  = aws_organizations_policy.freio.id
   }
 }
+
+output "contas" {
+  description = "IDs das contas-membro, por função."
+  value       = { for k, c in aws_organizations_account.conta : k => c.id }
+}
