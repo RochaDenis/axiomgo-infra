@@ -40,6 +40,7 @@ live/management/             # organização, SCPs, orçamento e anomalia de cus
 | --- | --- |
 | Orçamento US$ 200/mês, avisos 50/80/100% e previsão de estouro | `live/management/custo.tf` |
 | Alerta diário de gasto fora do padrão (≥ US$ 20) | `live/management/custo.tf` |
+| **Freio:** a 100% do orçamento, SCP automática impede criar recurso novo (o que roda continua; banco intocado) | `live/management/freio.tf` |
 | AWS Organizations + OUs `Seguranca` e `Workloads` | `live/management/organizacao.tf` |
 | SCP: só `sa-east-1`, `us-east-1`, `eu-central-1` | `live/management/organizacao.tf` |
 | SCP: não desliga auditoria/detecção, sem usuário IAM com chave, não sai da organização | idem |
