@@ -15,7 +15,9 @@ Spec e padrão de segurança: `RochaDenis/ST-Operations-os` → `docs/infra/2026
 
 ```
 bootstrap/bootstrap.yaml     # roda UMA vez no CloudShell (estado + OIDC)
-live/management/             # organização, SCPs, orçamento e anomalia de custo
+live/management/             # organização, SCPs, orçamento, auditoria e detecção
+live/br/teste/rede/          # rede da célula Brasil na conta teste-br
+modules/rede/                # VPC em 3 camadas (pública, app, dados), NAT e flow logs
 .github/workflows/terraform.yml
 ```
 
@@ -49,8 +51,14 @@ live/management/             # organização, SCPs, orçamento e anomalia de cus
 | Trilha de auditoria da organização na conta `logs`: KMS, validação de integridade, retenção travada 1 ano | `live/management/auditoria.tf` |
 | GuardDuty em todas as contas (admin delegado: `seguranca`), proteção de S3 e de banco | `live/management/deteccao.tf` |
 
+| Rede do `teste-br`: VPC `10.20.0.0/16` em 2 zonas, camadas pública/app/dados, instância NAT, flow logs criptografados | `live/br/teste/rede` |
+
+## Pilhas
+
+Cada pasta em `live/` tem estado próprio (`<pasta>/terraform.tfstate` no bucket de estado). A esteira roda o plan de todas e aplica uma por vez, na ordem da lista `stack` do workflow. Pilha nova entra nas duas listas.
+
 ## Próximas PRs
 
 - 0b-3: Security Hub CSPM + novo Security Hub, Config (admin delegado na conta `seguranca`), IAM Access Analyzer, monitor de anomalia por conta, alertas no Discord.
 - 0c: IAM Identity Center com MFA (ativação da instância é 1 clique no console).
-- 1: módulos `rede`, `dados`, `computacao`, `borda`.
+- 1: módulos `dados` (Aurora, cache, S3), `computacao` (ECS, ECR) e `borda` (ALB, WAF) no `teste-br`.
