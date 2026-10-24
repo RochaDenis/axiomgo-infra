@@ -7,10 +7,10 @@ name: terraform
 
 on:
   pull_request:
-    paths: ["live/**", ".github/workflows/terraform.yml", ".tflint.hcl"]
+    paths: ["live/**", "modules/**", ".github/workflows/terraform.yml", ".tflint.hcl"]
   push:
     branches: [main]
-    paths: ["live/**", ".github/workflows/terraform.yml"]
+    paths: ["live/**", "modules/**", ".github/workflows/terraform.yml"]
   workflow_dispatch:
     inputs:
       permitir_destruicao:
@@ -26,10 +26,12 @@ concurrency:
   group: terraform-${{ github.ref }}
   cancel-in-progress: false
 
+# Pilhas, na ordem de aplicação. Cada uma tem estado próprio no mesmo bucket.
+# Pilha nova: acrescentar nas duas listas "stack" abaixo (plan e apply).
 env:
   TF_VERSION: "1.16.7"
   AWS_REGION: sa-east-1
-  STACK: live/management
+  TF_VAR_bucket_estado: axiomgo-tfstate-${{ vars.AWS_ACCOUNT_ID }}
 
 jobs:
   checagens:
@@ -42,10 +44,13 @@ jobs:
       - name: fmt
         run: terraform fmt -check -recursive
       - name: validate
-        working-directory: ${{ env.STACK }}
         run: |
-          terraform init -backend=false -input=false
-          terraform validate
+          for d in live/management live/br/teste/rede; do
+            echo "::group::$d"
+            terraform -chdir="$d" init -backend=false -input=false
+            terraform -chdir="$d" validate
+            echo "::endgroup::"
+          done
       - uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
       - name: tflint
         env:
@@ -56,7 +61,7 @@ jobs:
       - name: checkov
         uses: bridgecrewio/checkov-action@c3e106d5f8f4253a6de5110efb41a080f83db294 # v12.3135.0
         with:
-          directory: live
+          directory: .
           framework: terraform
           soft_fail: false
           quiet: true
@@ -64,13 +69,20 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
-          scan-ref: live
+          scan-ref: .
+          skip-dirs: bootstrap
           severity: HIGH,CRITICAL
           exit-code: "1"
 
   plan:
     needs: checagens
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        stack: [live/management, live/br/teste/rede]
+    env:
+      STACK: ${{ matrix.stack }}
     permissions:
       contents: read
       id-token: write
@@ -95,7 +107,8 @@ jobs:
         run: |
           mkdir -p ~/.aws
           : > ~/.aws/config
-          terraform output -json contas 2>/dev/null > contas.json || echo '{}' > contas.json
+          terraform -chdir="$GITHUB_WORKSPACE/live/management" init -input=false -backend-config="bucket=$TF_VAR_bucket_estado" > /dev/null
+          terraform -chdir="$GITHUB_WORKSPACE/live/management" output -json contas 2>/dev/null > contas.json || echo '{}' > contas.json
           jq -r 'to_entries[] | "\(.key) \(.value)"' contas.json | while read -r conta id; do
             if ! printf '%s' "$id" | grep -Eq '^[0-9]{12}$'; then
               echo "::error::id inválido para $conta"; exit 1
@@ -124,7 +137,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: tfplan
+          name: tfplan-${{ strategy.job-index }}
           path: ${{ env.STACK }}/tfplan
           retention-days: 7
 
@@ -135,6 +148,14 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     environment: management
+    # Uma pilha por vez, na ordem da lista: a organização antes da rede, a rede antes do banco.
+    strategy:
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        stack: [live/management, live/br/teste/rede]
+    env:
+      STACK: ${{ matrix.stack }}
     permissions:
       contents: read
       id-token: write
@@ -150,7 +171,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: tfplan
+          name: tfplan-${{ strategy.job-index }}
           path: ${{ env.STACK }}
       - name: init
         working-directory: ${{ env.STACK }}
@@ -162,7 +183,8 @@ jobs:
         run: |
           mkdir -p ~/.aws
           : > ~/.aws/config
-          terraform output -json contas 2>/dev/null > contas.json || echo '{}' > contas.json
+          terraform -chdir="$GITHUB_WORKSPACE/live/management" init -input=false -backend-config="bucket=$TF_VAR_bucket_estado" > /dev/null
+          terraform -chdir="$GITHUB_WORKSPACE/live/management" output -json contas 2>/dev/null > contas.json || echo '{}' > contas.json
           jq -r 'to_entries[] | "\(.key) \(.value)"' contas.json | while read -r conta id; do
             if ! printf '%s' "$id" | grep -Eq '^[0-9]{12}$'; then
               echo "::error::id inválido para $conta"; exit 1
