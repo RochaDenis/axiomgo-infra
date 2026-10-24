@@ -1,6 +1,5 @@
 # Uma chave para o dado do cliente desta célula: banco, cache, arquivos e senhas.
 data "aws_caller_identity" "atual" {}
-data "aws_region" "atual" {}
 
 resource "aws_kms_key" "dados" {
   #checkov:skip=CKV_AWS_109:Política de chave KMS; "*" é a própria chave, administrada pela conta.
