@@ -22,3 +22,8 @@ output "cidrs_app" {
   description = "Faixas das sub-redes dos servidores."
   value       = module.rede.cidrs_app
 }
+
+output "vpc_cidr" {
+  description = "Faixa da VPC."
+  value       = module.rede.vpc_cidr
+}

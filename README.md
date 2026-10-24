@@ -18,8 +18,10 @@ bootstrap/bootstrap.yaml     # roda UMA vez no CloudShell (estado + OIDC)
 live/management/             # organização, SCPs, orçamento, auditoria e detecção
 live/br/teste/rede/          # rede da célula Brasil na conta teste-br
 live/br/teste/dados/         # banco, cache e arquivos da célula Brasil (teste-br)
+live/br/teste/computacao/    # base do servidor do motor: ECR, cluster ECS, logs, papéis, segredos
 modules/rede/                # VPC em 3 camadas (pública, app, dados), NAT e flow logs
 modules/dados/               # Aurora PostgreSQL 16 Serverless v2, Valkey Serverless, S3 de arquivos, KMS
+modules/computacao/          # ECR (tag imutável), cluster ECS Fargate/Spot, logs, papéis, cofre de segredos
 .github/workflows/terraform.yml
 ```
 
@@ -55,6 +57,7 @@ modules/dados/               # Aurora PostgreSQL 16 Serverless v2, Valkey Server
 
 | Rede do `teste-br`: VPC `10.20.0.0/16` em 2 zonas, camadas pública/app/dados, instância NAT, flow logs criptografados | `live/br/teste/rede` |
 | Dados do `teste-br`: Aurora PostgreSQL 16 Serverless v2 (pausa sozinho, máx. 4 ACU, TLS obrigatório, senha gerida pela AWS), Valkey Serverless (teto 1 GB), bucket de arquivos; tudo com chave KMS da célula, sem acesso público | `live/br/teste/dados` |
+| Base do servidor no `teste-br`: registro de imagens `axiomgo-engine` (tag imutável, varredura a cada envio), cluster ECS (Fargate e Fargate Spot), logs com KMS, papéis de execução e de tarefa (o motor só mexe nos arquivos), cofre de segredos do motor (nasce vazio) | `live/br/teste/computacao` |
 
 ## Pilhas
 
@@ -64,4 +67,4 @@ Cada pasta em `live/` tem estado próprio (`<pasta>/terraform.tfstate` no bucket
 
 - 0b-3: Security Hub CSPM + novo Security Hub, Config (admin delegado na conta `seguranca`), IAM Access Analyzer, monitor de anomalia por conta, alertas no Discord.
 - 0c: IAM Identity Center com MFA (ativação da instância é 1 clique no console).
-- 1: módulos `computacao` (ECS, ECR) e `borda` (ALB, WAF) no `teste-br`.
+- 1: serviço do motor (tarefas Fargate) + `borda` (ALB, WAF, certificado) no `teste-br`.
