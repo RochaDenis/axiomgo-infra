@@ -17,7 +17,9 @@ Spec e padrão de segurança: `RochaDenis/ST-Operations-os` → `docs/infra/2026
 bootstrap/bootstrap.yaml     # roda UMA vez no CloudShell (estado + OIDC)
 live/management/             # organização, SCPs, orçamento, auditoria e detecção
 live/br/teste/rede/          # rede da célula Brasil na conta teste-br
+live/br/teste/dados/         # banco, cache e arquivos da célula Brasil (teste-br)
 modules/rede/                # VPC em 3 camadas (pública, app, dados), NAT e flow logs
+modules/dados/               # Aurora PostgreSQL 16 Serverless v2, Valkey Serverless, S3 de arquivos, KMS
 .github/workflows/terraform.yml
 ```
 
@@ -52,6 +54,7 @@ modules/rede/                # VPC em 3 camadas (pública, app, dados), NAT e fl
 | GuardDuty em todas as contas (admin delegado: `seguranca`), proteção de S3 e de banco | `live/management/deteccao.tf` |
 
 | Rede do `teste-br`: VPC `10.20.0.0/16` em 2 zonas, camadas pública/app/dados, instância NAT, flow logs criptografados | `live/br/teste/rede` |
+| Dados do `teste-br`: Aurora PostgreSQL 16 Serverless v2 (pausa sozinho, máx. 4 ACU, TLS obrigatório, senha gerida pela AWS), Valkey Serverless (teto 1 GB), bucket de arquivos; tudo com chave KMS da célula, sem acesso público | `live/br/teste/dados` |
 
 ## Pilhas
 
@@ -61,4 +64,4 @@ Cada pasta em `live/` tem estado próprio (`<pasta>/terraform.tfstate` no bucket
 
 - 0b-3: Security Hub CSPM + novo Security Hub, Config (admin delegado na conta `seguranca`), IAM Access Analyzer, monitor de anomalia por conta, alertas no Discord.
 - 0c: IAM Identity Center com MFA (ativação da instância é 1 clique no console).
-- 1: módulos `dados` (Aurora, cache, S3), `computacao` (ECS, ECR) e `borda` (ALB, WAF) no `teste-br`.
+- 1: módulos `computacao` (ECS, ECR) e `borda` (ALB, WAF) no `teste-br`.
