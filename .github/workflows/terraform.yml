@@ -45,7 +45,7 @@ jobs:
         run: terraform fmt -check -recursive
       - name: validate
         run: |
-          for d in live/management live/br/teste/rede live/br/teste/dados live/br/teste/computacao; do
+          for d in live/management live/br/teste/rede live/br/teste/dados live/br/teste/computacao live/br/teste/borda; do
             echo "::group::$d"
             terraform -chdir="$d" init -backend=false -input=false
             terraform -chdir="$d" validate
@@ -80,7 +80,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        stack: [live/management, live/br/teste/rede, live/br/teste/dados, live/br/teste/computacao]
+        stack: [live/management, live/br/teste/rede, live/br/teste/dados, live/br/teste/computacao, live/br/teste/borda]
     env:
       STACK: ${{ matrix.stack }}
     permissions:
@@ -153,7 +153,7 @@ jobs:
       max-parallel: 1
       fail-fast: true
       matrix:
-        stack: [live/management, live/br/teste/rede, live/br/teste/dados, live/br/teste/computacao]
+        stack: [live/management, live/br/teste/rede, live/br/teste/dados, live/br/teste/computacao, live/br/teste/borda]
     env:
       STACK: ${{ matrix.stack }}
     permissions:
