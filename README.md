@@ -19,9 +19,11 @@ live/management/             # organização, SCPs, orçamento, auditoria e dete
 live/br/teste/rede/          # rede da célula Brasil na conta teste-br
 live/br/teste/dados/         # banco, cache e arquivos da célula Brasil (teste-br)
 live/br/teste/computacao/    # base do servidor do motor: ECR, cluster ECS, logs, papéis, segredos
+live/br/teste/borda/         # porta de entrada api-br-develop.axiomgo.io: certificado, ALB, WAF
 modules/rede/                # VPC em 3 camadas (pública, app, dados), NAT e flow logs
 modules/dados/               # Aurora PostgreSQL 16 Serverless v2, Valkey Serverless, S3 de arquivos, KMS
 modules/computacao/          # ECR (tag imutável), cluster ECS Fargate/Spot, logs, papéis, cofre de segredos
+modules/borda/               # certificado ACM (validação por DNS), ALB com log, WAF (regras AWS + limite por IP)
 .github/workflows/terraform.yml
 ```
 
